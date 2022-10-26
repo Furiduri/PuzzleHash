@@ -5,10 +5,14 @@
  */
 package puzzlehash;
 
+import java.awt.event.MouseEvent;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JTextArea;
 
 /**
  *
@@ -26,29 +30,39 @@ public class SearchHashConcurrente extends Thread {
     int NThreads;
     LocalDateTime StartDate;    
     LocalDateTime EndDate;
+    JButton btnFinish;
+    JTextArea txtLog;
+    String TimerEnd;
+    JLabel lblIntentos;
 
-    public SearchHashConcurrente(String BaseText, String Criterial, int intentosMax, String nameTread, int nThreads) {
+    public SearchHashConcurrente(String BaseText, String Criterial, int intentosMax, String nameTread, int nThreads, JTextArea txtLog, JButton btnFinsh, JLabel lblIntentos) {
         super(nameTread);
         StartDate = LocalDateTime.now();
         this.BaseText = BaseText;
         this.Criterial = Criterial;
         this.MaxIntent = intentosMax;
         this.NThreads = nThreads;
+        this.btnFinish = btnFinsh;
+        this.txtLog = txtLog;        
+        this.lblIntentos = lblIntentos;
     }
 
+
     @Override
+    @SuppressWarnings("empty-statement")
     public void run() {
-        System.out.println();
         ExecutorService executor = Executors.newFixedThreadPool(NThreads);
         char[] startKey = {0};
-        for (int i = 0; i < NThreads; i++) {
-            int MaxKeyLeng = 0;
-            if(NThreads > i+1)
-               MaxKeyLeng = i + 2;
+        int step = Math.round(256 / NThreads);
+        for (int i = 0; i < NThreads; i++) {            
+            char MaxKey = (char)(step*(i+1));
+            char[] NewstartKey = {0,0,MaxKey};
+            if(NThreads < i+1)
+                NewstartKey = null;
             executor.execute(new SearchHash(
-                    this, startKey, "SubHilo"+String.valueOf(i), MaxKeyLeng)
+                    this, startKey.clone(), "SubHilo"+String.valueOf(i), NewstartKey)
             );
-            startKey = (String.valueOf(startKey) +(char)0+(char)0).toCharArray();
+            startKey =  NewstartKey;
         }
         while (flagTread && HashFinding == null && !executor.isTerminated());
         executor.shutdown();
@@ -56,18 +70,20 @@ public class SearchHashConcurrente extends Thread {
         EndDate = LocalDateTime.now();
         long res = Utils.GetMiliTime(StartDate, EndDate); 
         System.out.println(this.getName()+ " Time ms: "+res);
+        TimerEnd = "Tiempo:  ms: "+res;
+        
+        btnFinish.dispatchEvent(new MouseEvent(btnFinish, MouseEvent.MOUSE_CLICKED,System.currentTimeMillis(),0,10,10,1,false));
     }
 
-    private void OtroIntento() {
-        Count++;
-    }
-
+    /**
+     *
+     * @throws Throwable
+     */
     @Override
-    protected void finalize() throws Throwable {
-        flagTread = false;
+    protected void finalize() throws Throwable {        
+            flagTread = false;        
     }
 
-    @Override
     public void destroy() {
         flagTread = false;
     }
@@ -78,14 +94,13 @@ public class SearchHashConcurrente extends Thread {
         String HashFinding;
         char[] key = {0};
         int Count = 0;
-        boolean flagTread = true;
-        int MaxKeyLeng;   
+        char[] MaxKey;   
 
-        public SearchHash(SearchHashConcurrente context, char[] StartKey, String nameTread, int MaxKey) {
+        public SearchHash(SearchHashConcurrente context, char[] StartKey, String nameTread, char[] MaxKey) {
             super(nameTread);
             this.Context = context;
             this.key = StartKey;
-            this.MaxKeyLeng = MaxKey;
+            this.MaxKey = MaxKey;
         }
 
         @Override
@@ -93,7 +108,7 @@ public class SearchHashConcurrente extends Thread {
             try {
                 while (Context.flagTread 
                     && (Context.MaxIntent >= Count || Context.MaxIntent == 0)
-                    && (MaxKeyLeng >= key.length || MaxKeyLeng == 0)
+                    && (!(MaxKey.equals(key)) || MaxKey == null)
                     ) {
                     this.OtroIntento();
                     HashFinding = Hashing.sha256(Context.BaseText + Arrays.toString(key));
@@ -106,24 +121,21 @@ public class SearchHashConcurrente extends Thread {
                     key = Utils.GetNextAscii(key, 0);
                 }
                 System.out.println(this.getName()+ " Hash:" + HashFinding + "  KEY:" + Arrays.toString(key) + " Count:" + String.valueOf(Count));                
+                txtLog.append( this.getName()+ " Hash:" + HashFinding + "  KEY:" + Arrays.toString(key) + " Count:" + String.valueOf(Count)+"\n");
             } catch (Exception e) {
                 System.err.println(e);
                 System.out.println("ERROR! Hash:" + HashFinding + "  KEY:" + Arrays.toString(key) + " Count:" + String.valueOf(Count));
             }
+           
         }
 
         private void OtroIntento() {
             Count++;
+            Context.Count++;
+            Context.lblIntentos.setText(String.valueOf(Context.Count));
         }
 
-        @Override
-        protected void finalize() throws Throwable {
-            flagTread = false;
-        }
-
-        @Override
         public void destroy() {
-            flagTread = false;
         }
     }
 }

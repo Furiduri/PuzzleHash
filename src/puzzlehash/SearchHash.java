@@ -5,8 +5,11 @@
  */
 package puzzlehash;
 
+import java.awt.AWTEvent;
+import java.awt.event.MouseEvent;
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import javax.swing.*;
 
 /**
  *
@@ -23,14 +26,18 @@ public class SearchHash extends Thread {
     int MaxIntent = 0;
     LocalDateTime StartDate;    
     LocalDateTime EndDate;
+    String TimerEnd;
+    JLabel lblIntentos;
+    JButton btnFinish;
     
-    
-    public SearchHash(String BaseText, String Criterial, int intentosMax, String nameTread) {
+    public SearchHash(String BaseText, String Criterial, int intentosMax, String nameTread, JLabel lblIntentos, JButton btnFinsh) {
         super(nameTread);
         StartDate = LocalDateTime.now();
         this.BaseText = BaseText;
         this.Criterial = Criterial;
         this.MaxIntent =intentosMax;
+        this.lblIntentos = lblIntentos;
+        this.btnFinish = btnFinsh;
     }
 
     @Override
@@ -52,18 +59,24 @@ public class SearchHash extends Thread {
         EndDate = LocalDateTime.now();
         long res = Utils.GetMiliTime(StartDate, EndDate); 
         System.out.println(this.getName()+ " Time ms: "+res);
+        TimerEnd = "Tiempo:  ms: "+res;
+        btnFinish.dispatchEvent(new MouseEvent(btnFinish, MouseEvent.MOUSE_CLICKED,System.currentTimeMillis(),0,10,10,1,false));
     }
 
     private void OtroIntento() {
         Count++;
+        lblIntentos.setText(String.valueOf(Count));
     }
 
     @Override
     protected void finalize() throws Throwable {
-        flagTread = false;
+        try {
+            flagTread = false;
+        } finally {
+            super.finalize();
+        }
     }
 
-    @Override
     public void destroy() {
         flagTread = false;
     }
